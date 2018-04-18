@@ -8,18 +8,26 @@ import asyncio
 import logging
 import aiomysql
 
+# 定义一个log()方法
+# args是一个空的tuple
 
+
+def log(sql, args=()):
+    logging.info('SQL: %s', sql)
+
+
+# dict提供get方法，d = {'jack':1},d.get('jack',2)可以自己指定值为2
 async def create_pool(loop, **kw):
     logging.info('ceate database connection pool...')
-    global __pool
+    global __pool  # 设置成全局的变量，可以在函数内部改变
     __pool = await aiomysql.create_pool(
-        host=kw.get('host', 'localhost'),
-        port=kw.get('port', 3306),
+        host=kw.get('host', 'localhost'),  # 指定为localhost
+        port=kw.get('port', 3306),  # 指定为3306
         user=kw['user'],
         password=kw['password'],
         db=kw['db'],
-        charset=kw.get('charset', 'utf8'),
-        autocommit=kw.get('autocommit', True),
+        charset=kw.get('charset', 'utf8'),  # 缺省情况下将编码设置为utf-8
+        autocommit=kw.get('autocommit', True),  # 自动提交事务
         maxsize=kw.get('maxsize', 10),
         minsize=kw.get('minsize', 1),
         loop=loop
@@ -65,3 +73,24 @@ async def select(sql, args, size=None):
                 rs = await cur.fetchall()
         logging.info('rows returned: %s' % len(rs))
         return rs
+
+# 要执行INSERT、UPDATE、DELETE语句，可以定义一个通用execute()函数
+# 因为这3种SQL的执行都需要相同的参数，以及返回一个整数表示影响的行数
+
+
+async def execute(sql, args, autocommit=True):
+    log(sql)
+    async with __pool.get() as conn:
+        if not autocommit:
+            await conn.begin()
+        try:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute(sql.replace('?','%s'), args)
+                affected = cur.rowcount
+            if not autocommit:
+                await conn.commit()
+        except BaseException as e:
+            if not autocommit:
+                await conn.rollback()
+            raise
+        return affected

@@ -1,14 +1,13 @@
 # 一个orm
 
 
-
 class Field(object):
     def __init__(self, name, column_type):
         self.name = name
         self.column_type = column_type
 
     def __str__(self):
-        return '<%s:%s>'%(self.__class__.__name__, self.name)
+        return '<%s:%s>' % (self.__class__.__name__, self.name)
 
 
 class StringField(Field):
@@ -24,7 +23,7 @@ class IntegerField(Field):
 class ModelMetaclass(type):
 
     def __new__(cls, name, bases, attrs):
-        if name=='Model':
+        if name == 'Model':
             return type.__new__(cls, name, bases, attrs)
         print('Found model: %s' % name)
         mappings = dict()
@@ -34,8 +33,8 @@ class ModelMetaclass(type):
                 mappings[k] = v
         for k in mappings.keys():
             attrs.pop(k)
-        attrs['__mappings__'] = mappings # 保存属性和列的映射关系
-        attrs['__table__'] = name # 假设表名和类名一致
+        attrs['__mappings__'] = mappings  # 保存属性和列的映射关系
+        attrs['__table__'] = name  # 假设表名和类名一致
         return type.__new__(cls, name, bases, attrs)
 
 
@@ -73,5 +72,7 @@ class User(Model):
     password = StringField('password')
 
 
-u = User(id=12345, name='yang', email='yang@gamil.com', password='password')
+# u = User(id=12345, name='yang', email='yang@gamil.com', password='password')
+u = User()
+u.id = 123456
 u.save()

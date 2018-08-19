@@ -12,19 +12,19 @@ class Field(object):
 
 class StringField(Field):
     def __init__(self, name):
-        super(StringField, self).__init__(name, 'varchar(100)')
+        super().__init__(name, 'varchar(100)')
 
 
 class IntegerField(Field):
     def __init__(self, name):
-        super(IntegerField, self).__init__(name, 'bigint')
+        super().__init__(name, 'bigint')
 
 
 class ModelMetaclass(type):
 
     def __new__(cls, name, bases, attrs):
         if name == 'Model':
-            return type.__new__(cls, name, bases, attrs)
+            return super().__new__(cls, name, bases, attrs)
         print('Found model: %s' % name)
         mappings = dict()
         for k, v in attrs.items():
@@ -35,7 +35,7 @@ class ModelMetaclass(type):
             attrs.pop(k)
         attrs['__mappings__'] = mappings  # 保存属性和列的映射关系
         attrs['__table__'] = name  # 假设表名和类名一致
-        return type.__new__(cls, name, bases, attrs)
+        return super().__new__(cls, name, bases, attrs)
 
 
 class Model(dict, metaclass=ModelMetaclass):
@@ -58,7 +58,8 @@ class Model(dict, metaclass=ModelMetaclass):
         args = []
         for k, v in self.__mappings__.items():
             fields.append(v.name)
-            params.append('?')
+            param = getattr(self, k)
+            params.append(str(param))
             args.append(getattr(self, k, None))
         sql = 'insert into %s (%s) values (%s)' % (self.__table__, ','.join(fields), ','.join(params))
         print('SQL: %s' % sql)
@@ -72,7 +73,7 @@ class User(Model):
     password = StringField('password')
 
 
-# u = User(id=12345, name='yang', email='yang@gamil.com', password='password')
-u = User()
-u.id = 123456
+u = User(id=123456, name='yang', email='yang@gamil.com', password='password')
+# u = User()
+# u.id = 123456
 u.save()

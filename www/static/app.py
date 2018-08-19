@@ -24,11 +24,10 @@ def index(request):
     return web.Response(body=b'<h1>Awesome</h1>', content_type='text/html', charset='utf-8')
 
 
-@asyncio.coroutine
-def init(loop):
+async def init(loop):
     app = web.Application(loop=loop)  # 创建web服务器实例app
     app.router.add_route('GET', '/', index)  # 将url注册进router
-    srv = yield from loop.create_server(app.make_handler(), '127.0.0.1', 9000)  # yield from返回一个创建好的，绑定ip，端口和HTTP协议监听协程
+    srv = await loop.create_server(app.make_handler(), '127.0.0.1', 9000)  # yield from返回一个创建好的，绑定ip，端口和HTTP协议监听协程
     logging.info('server started at http://127.0.0.1:9000...')
     return srv
 

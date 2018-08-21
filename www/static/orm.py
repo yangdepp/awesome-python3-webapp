@@ -26,6 +26,14 @@ async def create_pool(loop, **kw):
     )
 
 
+# 解决Event loop is closed报错问题
+async def destory_pool():
+    global __pool
+    if __pool is not None:
+        __pool.close()
+        await __pool.wait_closed()
+
+
 # 定义一个select函数，执行select语句
 async def select(sql, args, size=None):
     log(sql, args)
@@ -107,7 +115,7 @@ class TextField(Field):
         super().__init__(name, 'text', False, default)
 
 
-class ModelMetaclass:
+class ModelMetaclass(type):
     def __new__(cls, name, bases, attrs):
         if name == 'Model':
             return type.__new__(cls, name, bases, attrs)

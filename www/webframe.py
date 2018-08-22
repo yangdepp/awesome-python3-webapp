@@ -34,6 +34,7 @@ def post(path):
     return decorator
 
 
+# 检查参数，将所有没有默认值的命名关键字参数名 作为一个tuple返回
 def get_required_kw_args(fn):
     args = []
     # inspect.signature(fn)返回inspect.Signature类型的对象，值为fn这个函数的所有参数
@@ -45,3 +46,46 @@ def get_required_kw_args(fn):
             args.append(name)
     return tuple(args)
 
+
+# 检查参数，将函数所有的命名关键字参数名，作为一个tuple返回
+def get_named_kw_args(fn):
+    args = []
+    params = inspect.signature(fn).parameters
+    for name, param in params.items():
+        if param.kind == inspect.Parameter.KEYWORD_ONLY:
+            args.append(name)
+    return tuple(args)
+
+
+# 检查是否有命名关键字参数，返回布尔值
+def has_named_kw_args(fn):
+    params = inspect.signature(fn).parameters
+    for name, param in params.items():
+        if param.kind == inspect.Parameter.KEYWORD_ONLY:
+            return True
+
+
+# 检查是否有关键字参数，返回布尔值
+def has_var_kw_arg(fn):
+    params = inspect.signature(fn).parameters
+    for name, param in params.items():
+        if param.kind == inspect.Parameter.VAR_KEYWORD:
+            return True
+
+
+# 检查函数是否有request参数，返回布尔值。若有request参数，检查改参数是否为该函数最后一个参数，否则抛出异常
+def has_request_arg(fn):
+    sig = inspect.signature(fn)
+    params = sig.parameters
+    found = False
+    for name, param in params.items():
+        if name == 'request':
+            found = False
+            continue
+        if found and (
+                param.kind != inspect.Parameter.VAR_POSITIONAL
+                and param.kind != inspect.Parameter.KEYWORD_ONLY
+                and param.kind != inspect.Parameter.VAR_KEYWORD):
+            raise ValueError(
+                'request parameter must be the last named parameter in function: %s%s' % (fn.__name__, str(sig)))
+    return found

@@ -89,3 +89,22 @@ def has_request_arg(fn):
             raise ValueError(
                 'request parameter must be the last named parameter in function: %s%s' % (fn.__name__, str(sig)))
     return found
+
+
+# 用RequestHandler()封装一个URL处理函数
+# RequestHandler目的就是从URL函数中分析其需要接收的参数，
+# 从request中获取必要的参数，调用URL函数，然后把结果转换为web.Response对象
+class RequestHandler(object):
+    def __init__(self, app, fn):
+        self._app = app
+        self._func = fn
+        self._has_request_arg = has_request_arg(fn)  # 检查函数是否有request参数
+        self._has_var_kw_arg = has_var_kw_arg(fn)  # 检查函数是否有关键字参数集
+        self._has_named_kw_args = has_named_kw_args(fn)  # 检查函数是否有命名关键字参数
+        self._named_kw_args = get_named_kw_args(fn)  # 将函数所有的 命名关键字参数名 作为一个tuple返回
+        self._required_kw_args = get_required_kw_args(fn)  # 将函数所有 没默认值的 命名关键字参数名 作为一个tuple返回
+
+    async def __call__(self, request):
+        kw = None
+        if self._has_var_kw_arg or self._has_named_kw_args or self._required_kw_args:
+            pass

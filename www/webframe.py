@@ -1,5 +1,8 @@
 # create by 'yang' in 2018/8/21
-import asyncio, functools, inspect
+import asyncio, functools, inspect, logging
+from aiohttp import web
+from urllib import parse
+from apis import APIError
 
 __author__ = 'yang'
 
@@ -106,5 +109,68 @@ class RequestHandler(object):
 
     async def __call__(self, request):
         kw = None
+        # 如果传入的处理函数具有关键字参数或者命名关键字参数或request参数
         if self._has_var_kw_arg or self._has_named_kw_args or self._required_kw_args:
-            pass
+            if request.method == 'POST':
+                # POST请求
+                if not request.content_type:
+                    # 如果没有正文类型信息时返回
+                    return web.HTTPBadRequest('Missing Content_Type.')
+
+                ct = request.content_type.lower()
+                if ct.startwith('application/json'):
+                    # 处理JSON类型的数据，传入参数字典中
+                    params = await request.json()
+                    if not isinstance(params, dict):
+                        return web.HTTPBadRequest('JSON body must be object.')
+                    kw = params
+                elif ct.startwith('application/x-www-form-urlencoded') or ct.startwith('multipart/form-data'):
+                    # 处理表单类型的数据，传入参数字典中
+                    params = await request.post()
+                    kw = dict(**params)
+                else:
+                    return web.HTTPBadRequest('Unsupported Content-Type: %s' % request.content_type)
+
+            if request.method == 'GET':
+                # GET请求预处理
+                qs = request.query_string
+                # 获取URL中的请求参数，如 name=Justone, id=007
+                if qs:
+                    # 将请求参数传入参数字典中
+                    kw = dict()
+                    for k, v in parse.parse_qs(qs, True).items():
+                        # parse a query string, data are returned as a dict. the dict keys are the unique query variable names and the values are lists of values for each name
+                        # a True value indicates that blanks should be retained as blank strings
+                        kw[k] = v[0]
+
+        if kw is None:
+            # 请求无请求参数时
+            kw = dict(**request.match_info)
+        # Read-only property with AbstractMatchInfo instance for result of route resolving
+        else:
+            # 参数字典收集请求参数
+            if not self._has_var_kw_arg and self._named_kw_args:
+                copy = dict()
+                for name in self._named_kw_args:
+                    if name in kw:
+                        copy[name] = kw[name]
+                kw = copy
+            for k, v in request.match_info.items():
+                if k in kw:
+                    logging.warning('Duplicate arg name in named arg and kw args: %s' % k)
+                kw[k] = v
+        if self._has_request_arg:
+            kw['request'] = request
+        if self._required_kw_args:
+            # 收集无默认值的关键字参数
+            for name in self._required_kw_args:
+                if not name in kw:
+                    # 当存在关键字参数未被赋值时返回，例如 一般的账号注册时，没填入密码就提交注册申请时，提示密码未输入
+                    return web.HTTPBadRequest('Missing arguments: %s' % name)
+        logging.info('call with args: %s' % str(kw))
+        try:
+            r = await self._func(**kw)
+            # 最后调用处理函数，并传入请求参数，进行请求处理
+            return r
+        except APIError as e:
+            return dict(error=e.error, data=e.data, message=e.message)

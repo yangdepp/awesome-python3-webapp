@@ -9,23 +9,19 @@ asnyc web application
 import logging;
 
 logging.basicConfig(level=logging.INFO)
+
 import asyncio, os, json, time
 from datetime import datetime
-from aiohttp import web
 
+from aiohttp import web
 from jinja2 import Environment, FileSystemLoader
+
 import orm
 from coroweb import add_routes, add_static
 
 
-# 该函数的作用是处理URL，之后将与具体URL绑定
-###
-#   agrs:aiohttp.web.request实例，包含所有浏览器发送过来的HTTP协议中的信息
-#   return:aiohttp.web.response实例，功能为构造一个HTTP响应类声明。
-# ###
-
-def init_jinjia2(app, **kw):
-    logging.info('init jinjia2...')
+def init_jinja2(app, **kw):
+    logging.info('init jinja2...')
     options = dict(
         autoescape=kw.get('autoescape', True),
         block_start_string=kw.get('block_start_string', '{%'),
@@ -34,11 +30,10 @@ def init_jinjia2(app, **kw):
         variable_end_string=kw.get('variable_end_string', '}}'),
         auto_reload=kw.get('auto_reload', True)
     )
-
     path = kw.get('path', None)
     if path is None:
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
-    logging.info('set jinjia2 template path: %s' % path)
+    logging.info('set jinja2 template path: %s' % path)
     env = Environment(loader=FileSystemLoader(path), **options)
     filters = kw.get('filters', None)
     if filters is not None:
@@ -126,11 +121,11 @@ def datetime_filter(t):
 
 
 async def init(loop):
-    await orm.create_pool(loop=loop, host='127.0.0.1', port=3306, user='root', password='xxx1110', db='awsome')
+    await orm.create_pool(loop=loop, host='127.0.0.1', port=3306, user='root', password='xxx1110', db='awesome')
     app = web.Application(loop=loop, middlewares=[
         logger_factory, response_factory
     ])
-    init_jinjia2(app, filters=dict(datetime=datetime_filter))
+    init_jinja2(app, filters=dict(datetime=datetime_filter))
     add_routes(app, 'handlers')
     add_static(app)
     srv = await loop.create_server(app.make_handler(), '127.0.0.1', 9000)
